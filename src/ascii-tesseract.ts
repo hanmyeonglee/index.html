@@ -1,8 +1,17 @@
 import { LitElement, html, type PropertyValues } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { tailwindSheet } from './shared-styles'
 
 @customElement('ascii-tesseract')
 export class AsciiTesseract extends LitElement {
+    connectedCallback() {
+        super.connectedCallback();
+        this.shadowRoot!.adoptedStyleSheets = [
+            ...this.shadowRoot!.adoptedStyleSheets,
+            tailwindSheet,
+        ];
+    }
+
     @property({ type: Number })
     angle = 0;
 
