@@ -5,8 +5,8 @@ import { tailwindSheet } from './shared-styles'
 type Point = [number, number];
 type PointInfo = [...Point, number];
 
-@customElement('ascii-tesseract')
-export class AsciiTesseract extends LitElement {
+@customElement('ascii-square')
+export class AsciiSquare extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this.shadowRoot!.adoptedStyleSheets = [
@@ -19,20 +19,20 @@ export class AsciiTesseract extends LitElement {
     angle = 0;
 
     static SIZE = 21;
-    static HALFSIZE = Math.floor(AsciiTesseract.SIZE / 2);
+    static HALFSIZE = Math.floor(AsciiSquare.SIZE / 2);
     static CANVAS_SIZE = 41;
-    static HALFCANVAS = Math.floor(AsciiTesseract.CANVAS_SIZE / 2);
+    static HALFCANVAS = Math.floor(AsciiSquare.CANVAS_SIZE / 2);
 
     private createNewScreen(): string[][] {
-        return Array.from({ length: AsciiTesseract.CANVAS_SIZE }, () => Array(AsciiTesseract.CANVAS_SIZE).fill(' '));
+        return Array.from({ length: AsciiSquare.CANVAS_SIZE }, () => Array(AsciiSquare.CANVAS_SIZE).fill(' '));
     }
     
     private screenArray: string[][] = this.createNewScreen();
     private readonly basePoints: Point[] = [
-        [-AsciiTesseract.HALFSIZE, -AsciiTesseract.HALFSIZE],
-        [AsciiTesseract.HALFSIZE, -AsciiTesseract.HALFSIZE],
-        [AsciiTesseract.HALFSIZE, AsciiTesseract.HALFSIZE],
-        [-AsciiTesseract.HALFSIZE, AsciiTesseract.HALFSIZE]
+        [-AsciiSquare.HALFSIZE, -AsciiSquare.HALFSIZE],
+        [AsciiSquare.HALFSIZE, -AsciiSquare.HALFSIZE],
+        [AsciiSquare.HALFSIZE, AsciiSquare.HALFSIZE],
+        [-AsciiSquare.HALFSIZE, AsciiSquare.HALFSIZE]
     ];
 
     private calculateRotation(): Point[] {
@@ -98,8 +98,8 @@ export class AsciiTesseract extends LitElement {
         ];
 
         const newScreen = this.createNewScreen();
-        edges.map(([x, y, brightness]) => { return [x + AsciiTesseract.HALFCANVAS, y + AsciiTesseract.HALFCANVAS, brightness] })
-             .filter(([x, y, _]) => x >= 0 && x < AsciiTesseract.CANVAS_SIZE && y >= 0 && y < AsciiTesseract.CANVAS_SIZE)
+        edges.map(([x, y, brightness]) => { return [x + AsciiSquare.HALFCANVAS, y + AsciiSquare.HALFCANVAS, brightness] })
+             .filter(([x, y, _]) => x >= 0 && x < AsciiSquare.CANVAS_SIZE && y >= 0 && y < AsciiSquare.CANVAS_SIZE)
              .forEach(([x, y, brightness]) => {
                 newScreen[y][x] = this.chooseASCII(brightness);
              });
