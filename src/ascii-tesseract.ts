@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js'
 import { tailwindSheet } from './shared-styles'
 
 type Point = [number, number];
+type PointInfo = [...Point, number];
 
 @customElement('ascii-tesseract')
 export class AsciiTesseract extends LitElement {
@@ -45,60 +46,65 @@ export class AsciiTesseract extends LitElement {
         });
     }
 
-    private drawLine(x0: number, y0: number, x1: number, y1: number): Point[] {
-        const points: Point[] = [];
+    private drawLine(x0: number, y0: number, x1: number, y1: number): PointInfo[] {
+        const points: PointInfo[] = [];
 
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-        let err = dx - dy;
+        const isSteep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+        if (isSteep) {
+            [x0, y0] = [y0, x0];
+            [x1, y1] = [y1, x1];
+        }
 
-        while (true) {
-            points.push([x0, y0]);
-            if (x0 === x1 && y0 === y1) break;
+        if (x0 > x1) {
+            [x0, x1] = [x1, x0];
+            [y0, y1] = [y1, y0];
+        }
 
-            const err2 = err * 2;
-            if (err2 > -dy) {
-                err -= dy;
-                x0 += sx;
-            }
-            if (err2 < dx) {
-                err += dx;
-                y0 += sy;
-            }
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        const grad = dy / dx;
+
+        let exactY = y0;
+        for (let x = x0; x <= x1; x++) {
+            const y = Math.floor(exactY);
+            const diff = exactY - y;
+
+            points.push([isSteep ? y : x, isSteep ? x : y, 1 - diff]);
+            points.push([isSteep ? y + 1 : x, isSteep ? x : y + 1, diff]);
+            exactY += grad;
         }
 
         return points;
     }
 
-    private readonly lineASCII = "-\\|/";
-    private chooseASCII(x0: number, y0: number, x1: number, y1: number): string {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        return this.lineASCII[
-            Number(dx > 2 * dy) * 0 +
-            Number(2 * dx >= dy && dy > dx) * 1 +
-            Number(dy > 2 * dx) * 2 +
-            Number(2 * dy >= dx && dx > dy) * 3
-        ];
+    private readonly DENSITY = [" .'`^\",", ":;Il!i>", "<~+_-?]", "[}{1)(|", "\\/tfjrx", "nuvczXY", "UJCLQ0O", "Zmwqpdb", "khao*#M", "W&8%B@$"];
+    private chooseASCII(brightness: number): string {
+        const ASCIIs = this.DENSITY[Math.floor(brightness * (this.DENSITY.length - 1))];
+        return ASCIIs[Math.floor(Math.random() * ASCIIs.length)];
     }
 
     private drawFrame() {
         const rotatedPoints = this.calculateRotation();
-        const edge = rotatedPoints.flatMap((point, index) => {
-            const nextPoint = rotatedPoints[(index + 1) % rotatedPoints.length];
-            return this.drawLine(...point, ...nextPoint);
-        });
+        const edges = [
+            ...(
+                rotatedPoints.flatMap((point, index) => {
+                    const nextPoint = rotatedPoints[(index + 1) % rotatedPoints.length];
+                    return this.drawLine(...point, ...nextPoint);
+                })
+            ),
+            ...(
+                rotatedPoints.map(([x, y]) => [x, y, 1])
+            )
+        ];
 
-        this.screenArray = this.createNewScreen();
-        edge.map(([x, y]) => { return [x + AsciiTesseract.HALFCANVAS, y + AsciiTesseract.HALFCANVAS] })
-            .filter(([x, y]) => x >= 0 && x < AsciiTesseract.CANVAS_SIZE && y >= 0 && y < AsciiTesseract.CANVAS_SIZE)
-            .forEach(([x, y], index) => {
-                const nextPoint = edge[(index + 1) % edge.length];
-                const prevPoint = edge[(index - 1 + edge.length) % edge.length];
-                this.screenArray[y][x] = this.chooseASCII(...prevPoint, ...nextPoint);
-            });
+        const newScreen = this.createNewScreen();
+        edges.map(([x, y, brightness]) => { return [x + AsciiTesseract.HALFCANVAS, y + AsciiTesseract.HALFCANVAS, brightness] })
+             .filter(([x, y, _]) => x >= 0 && x < AsciiTesseract.CANVAS_SIZE && y >= 0 && y < AsciiTesseract.CANVAS_SIZE)
+             .forEach(([x, y, brightness]) => {
+                newScreen[y][x] = this.chooseASCII(brightness);
+             });
+
+        this.screenArray = newScreen;
     }
 
     protected willUpdate(changedProperties: PropertyValues) {
@@ -110,13 +116,13 @@ export class AsciiTesseract extends LitElement {
     protected firstUpdated(_changedProperties: PropertyValues): void {
         setInterval(() => {
             this.angle = (this.angle + 5) % 360;
-        }, 100);
+        }, 80);
     }
 
     render() {     
         return html`
             <div>
-                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em]">${
+                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-green-500 text-sm">${
                     this.screenArray.map(row => row.join('')).join('\n')
                 }</pre>
             </div>
