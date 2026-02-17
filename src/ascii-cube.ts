@@ -152,7 +152,7 @@ export class AsciiCube extends LitElement {
     render() {     
         return html`
             <div>
-                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-green-500 text-[0.5rem] select-none">${
+                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-cyan-300 text-[0.5rem] select-none">${
                     this.screenArray.map(row => row.join('')).join('\n')
                 }</pre>
             </div>
