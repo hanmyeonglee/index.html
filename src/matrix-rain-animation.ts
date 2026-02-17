@@ -78,12 +78,17 @@ export class MatrixRainAnimation {
   private rafId = 0;
   private lastTime = 0;
   private running = false;
+  private onDone?: () => void;
 
-  constructor(canvas: HTMLCanvasElement, flashEl: HTMLElement, profileEl: HTMLElement) {
+  // circle center offset (fraction of height, 0.5 = center)
+  private readonly CIRCLE_CENTER_Y = 0.40;
+
+  constructor(canvas: HTMLCanvasElement, flashEl: HTMLElement, profileEl: HTMLElement, onDone?: () => void) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.flashEl = flashEl;
     this.profileEl = profileEl;
+    this.onDone = onDone;
   }
 
   // ─── Public API ──────────────────────────────────────────────────
@@ -106,6 +111,7 @@ export class MatrixRainAnimation {
     window.removeEventListener('resize', this.onResize);
     gsap.killTweensOf(this);
     gsap.killTweensOf(this.glowCircle);
+    gsap.killTweensOf(this.sideGlow);
   }
 
   // ─── Resize ──────────────────────────────────────────────────────
@@ -277,6 +283,23 @@ export class MatrixRainAnimation {
           repeat: -1,
         });
 
+        // side glow fade in + pulse
+        gsap.to(this.sideGlow, {
+          opacity: 0.35,
+          duration: 1.5,
+          delay: 0.3,
+          ease: 'power2.out',
+          onComplete: () => {
+            gsap.to(this.sideGlow, {
+              opacity: 0.15,
+              duration: 3,
+              ease: 'sine.inOut',
+              yoyo: true,
+              repeat: -1,
+            });
+          },
+        });
+
         this.phase = 'done';
         this.shakeIntensity = 0;
 
@@ -286,6 +309,9 @@ export class MatrixRainAnimation {
           duration: 1.5,
           delay: 0.5,
           ease: 'power2.out',
+          onComplete: () => {
+            this.onDone?.();
+          },
         });
       },
     });
@@ -374,7 +400,7 @@ export class MatrixRainAnimation {
 
     // ── draw circle characters ──────────────────────────────────
     const cx = w / 2;
-    const cy = h / 2;
+    const cy = h * this.CIRCLE_CENTER_Y;
 
     for (const cc of this.circleChars) {
       if (cc.opacity <= 0.01) continue;
