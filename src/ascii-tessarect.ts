@@ -29,9 +29,9 @@ export class AsciiTessarect extends LitElement {
     @property({ type: Number })
     angleWX = 0;
 
-    static SIZE = 20;
+    static SIZE = 10;
     static HALFSIZE = Math.floor(AsciiTessarect.SIZE / 2);
-    static CANVAS_SIZE = 120;
+    static CANVAS_SIZE = 60;
     static HALFCANVAS = Math.floor(AsciiTessarect.CANVAS_SIZE / 2);
 
     static Z_OFFSET = Math.round(Math.sqrt(3) * AsciiTessarect.HALFSIZE * 5);
@@ -39,7 +39,7 @@ export class AsciiTessarect extends LitElement {
     static MAX_RADIUS_4D = AsciiTessarect.SIZE;
     static MAX_RADIUS_3D = AsciiTessarect.MAX_RADIUS_4D * (AsciiTessarect.W_OFFSET / (AsciiTessarect.W_OFFSET - AsciiTessarect.MAX_RADIUS_4D));
     static MAX_RADIUS_2D_NORMAL = AsciiTessarect.MAX_RADIUS_3D * (AsciiTessarect.Z_OFFSET / (AsciiTessarect.Z_OFFSET - AsciiTessarect.MAX_RADIUS_3D));
-    static FOV = (AsciiTessarect.HALFCANVAS * 0.9) / AsciiTessarect.MAX_RADIUS_2D_NORMAL;
+    static FOV = AsciiTessarect.HALFCANVAS / AsciiTessarect.MAX_RADIUS_2D_NORMAL * 1.7;
 
     private createNewScreen(): string[][] {
         return Array.from({ length: AsciiTessarect.CANVAS_SIZE }, () => Array(AsciiTessarect.CANVAS_SIZE).fill(' '));
@@ -155,17 +155,17 @@ export class AsciiTessarect extends LitElement {
 
     protected firstUpdated(_changedProperties: PropertyValues): void {
         setInterval(() => {
-            this.angleXY = (this.angleXY + 2 + Math.random() * 6) % 360;
-            this.angleYZ = (this.angleYZ + 2 + Math.random() * 6) % 360;
-            this.angleZW = (this.angleZW + 2 + Math.random() * 6) % 360;
-            this.angleWX = (this.angleWX + 2 + Math.random() * 6) % 360;
-        }, 80);
+            this.angleXY = (this.angleXY + 0.5 + Math.random()) % 360;
+            this.angleYZ = (this.angleYZ + 1 + Math.random()) % 360;
+            this.angleZW = (this.angleZW + 1.5 + Math.random()) % 360;
+            this.angleWX = (this.angleWX + Math.random()) % 360;
+        }, 30);
     }
 
     render() {     
         return html`
             <div>
-                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-yellow-500 text-sm select-none">${
+                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-yellow-500 text-[0.5rem] select-none">${
                     this.screenArray.map(row => row.join('')).join('\n')
                 }</pre>
             </div>
