@@ -144,8 +144,8 @@ export class AsciiCube extends LitElement {
 
     protected firstUpdated(_changedProperties: PropertyValues): void {
         setInterval(() => {
-            this.angleX = (this.angleX + 5) % 360;
-            this.angleY = (this.angleY + 5) % 360;
+            this.angleX = (this.angleX + 2 + Math.random() * 6) % 360;
+            this.angleY = (this.angleY + 2 + Math.random() * 6) % 360;
         }, 80);
     }
 
