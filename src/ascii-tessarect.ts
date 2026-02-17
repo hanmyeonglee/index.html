@@ -31,12 +31,15 @@ export class AsciiTessarect extends LitElement {
 
     static SIZE = 20;
     static HALFSIZE = Math.floor(AsciiTessarect.SIZE / 2);
-    static CANVAS_SIZE = 40;
+    static CANVAS_SIZE = 120;
     static HALFCANVAS = Math.floor(AsciiTessarect.CANVAS_SIZE / 2);
 
     static Z_OFFSET = Math.round(Math.sqrt(3) * AsciiTessarect.HALFSIZE * 5);
     static W_OFFSET = Math.round(2 * AsciiTessarect.HALFSIZE * 5);
-    static FOV = AsciiTessarect.CANVAS_SIZE * 2;
+    static MAX_RADIUS_4D = AsciiTessarect.SIZE;
+    static MAX_RADIUS_3D = AsciiTessarect.MAX_RADIUS_4D * (AsciiTessarect.W_OFFSET / (AsciiTessarect.W_OFFSET - AsciiTessarect.MAX_RADIUS_4D));
+    static MAX_RADIUS_2D_NORMAL = AsciiTessarect.MAX_RADIUS_3D * (AsciiTessarect.Z_OFFSET / (AsciiTessarect.Z_OFFSET - AsciiTessarect.MAX_RADIUS_3D));
+    static FOV = (AsciiTessarect.HALFCANVAS * 0.9) / AsciiTessarect.MAX_RADIUS_2D_NORMAL;
 
     private createNewScreen(): string[][] {
         return Array.from({ length: AsciiTessarect.CANVAS_SIZE }, () => Array(AsciiTessarect.CANVAS_SIZE).fill(' '));
