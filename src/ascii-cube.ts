@@ -62,7 +62,7 @@ export class AsciiCube extends LitElement {
 
         return AsciiCube.BASE_POINTS
             .map(([x, y, z]) => { return [x, y*cosX - z*sinX, y*sinX + z*cosX] })
-            .map(([x, y, z]) => { return [x*cosY+z*sinY, y, -x*sinY+z*cosY] })
+            .map(([x, y, z]) => { return [x*cosY + z*sinY, y, z*cosY - x*sinY] })
             .map(_ => _.map(Math.round) as Point3D);
     }
 
@@ -144,15 +144,15 @@ export class AsciiCube extends LitElement {
 
     protected firstUpdated(_changedProperties: PropertyValues): void {
         setInterval(() => {
-            this.angleX = (this.angleX + 2 + Math.random() * 6) % 360;
-            this.angleY = (this.angleY + 2 + Math.random() * 6) % 360;
-        }, 80);
+            this.angleX = (this.angleX + 3 + Math.random()) % 360;
+            this.angleY = (this.angleY + 6 + Math.random()) % 360;
+        }, 60);
     }
 
     render() {     
         return html`
             <div>
-                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-yellow-500 text-sm">${
+                <pre id="canvas" class="font-mono leading-[0.75em] tracking-[0.15em] text-green-500 text-[0.5rem] select-none">${
                     this.screenArray.map(row => row.join('')).join('\n')
                 }</pre>
             </div>
