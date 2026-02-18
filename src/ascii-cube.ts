@@ -1,4 +1,4 @@
-import { LitElement, html, type PropertyValues } from 'lit'
+import { LitElement, css, html, type PropertyValues } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { tailwindSheet } from './shared-styles'
 
@@ -8,6 +8,18 @@ type Point3D = [number, number, number];
 
 @customElement('ascii-cube')
 export class AsciiCube extends LitElement {
+    static styles = css`
+        :host {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas {
+            font-size: var(--ascii-cube-font-size, 0.9rem);
+        }
+    `;
+
     connectedCallback() {
         super.connectedCallback();
         this.shadowRoot!.adoptedStyleSheets = [
@@ -151,8 +163,8 @@ export class AsciiCube extends LitElement {
 
     render() {     
         return html`
-            <div>
-                <pre id="canvas" style="margin:0;" class="font-mono leading-[0.75em] tracking-[0.15em] bg-linear-to-b from-cyan-400 to-purple-400 via-cyan-700 bg-clip-text text-transparent text-[0.5rem] select-none">${
+            <div class="w-full h-full grid place-items-center overflow-hidden">
+                <pre id="canvas" class="font-mono bg-linear-to-b from-cyan-400 to-purple-400 via-cyan-700 bg-clip-text text-transparent select-none m-0 leading-[0.75] tracking-[0.15em]">${
                     this.screenArray.map(row => row.join('')).join('\n')
                 }</pre>
             </div>

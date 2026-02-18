@@ -16,71 +16,39 @@ root-app {
 }
 
 #intro-stage {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  position: relative;
 }
 
 #intro-flash {
-  position: absolute;
-  inset: 0;
-  background: rgb(245 245 245);
-  opacity: 0;
-  display: none;
-  pointer-events: none;
-  z-index: 10;
 }
 
 .intro-side-glow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: var(--intro-side-glow-width, clamp(10px, 1.2vmin, 18px));
-  height: var(--intro-side-glow-height, clamp(360px, 78vh, 860px));
-  border-radius: 9999px;
+  width: clamp(10px, 1.2vmin, 18px);
+  height: clamp(360px, 78vh, 860px);
   background: linear-gradient(
     to bottom,
-    var(--intro-side-glow-grad-top, rgba(70, 235, 255, 0.14)) 0%,
-    var(--intro-side-glow-grad-upper, rgba(62, 230, 255, 0.84)) 18%,
-    var(--intro-side-glow-grad-mid, rgba(138, 92, 255, 1)) 50%,
-    var(--intro-side-glow-grad-lower, rgba(72, 225, 255, 0.84)) 82%,
-    var(--intro-side-glow-grad-bottom, rgba(90, 190, 255, 0.14)) 100%
+    rgba(70, 235, 255, 0.14) 0%,
+    var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)) 50%,
+    rgba(70, 235, 255, 0.14) 100%
   );
-  opacity: 0;
-  pointer-events: none;
   filter: blur(var(--intro-side-glow-blur, 1.6px));
   box-shadow:
-    0 0 var(--intro-side-glow-near-radius, 20px) var(--intro-side-glow-near-color, rgba(90, 235, 255, 0.88)),
-    0 0 var(--intro-side-glow-mid-radius, 46px) var(--intro-side-glow-mid-color, rgba(132, 112, 255, 0.72)),
-    0 0 var(--intro-side-glow-far-radius, 100px) var(--intro-side-glow-far-color, rgba(156, 94, 255, 0.58)),
-    0 0 var(--intro-side-glow-wide-radius, 150px) var(--intro-side-glow-wide-color, rgba(90, 190, 255, 0.42));
-  z-index: 3;
+    0 0 24px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)),
+    0 0 72px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)),
+    0 0 140px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92));
 }
 
 #intro-side-glow-left {
-  left: var(--intro-side-glow-edge-offset, clamp(8px, 1.5vw, 28px));
 }
 
 #intro-side-glow-right {
-  right: var(--intro-side-glow-edge-offset, clamp(8px, 1.5vw, 28px));
 }
 
 #intro-ring {
   width: var(--intro-ring-size);
-  aspect-ratio: 1 / 1;
-  display: grid;
-  place-items: center;
   transform: translateY(var(--intro-ring-offset-y));
-  position: relative;
-  z-index: 2;
 }
 
 #intro-ring-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
 }
 
 #intro-ring-path {
@@ -104,23 +72,41 @@ root-app {
 }
 
 #intro-cube {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: grid;
-  place-items: center;
-  opacity: 0;
+  width: 100%;
+  height: 100%;
   --intro-cube-scale: 0.94;
-  --intro-cube-offset-x: 0%;
-  --intro-cube-offset-y: 0%;
-  transform: translate(calc(-50% + var(--intro-cube-offset-x)), calc(-50% + var(--intro-cube-offset-y))) scale(var(--intro-cube-scale));
-  pointer-events: none;
-  z-index: 4;
+  transform: translate(-50%, -50%) scale(var(--intro-cube-scale));
 }
 
 #intro-cube ascii-cube {
-  transform: scale(0.72);
-  transform-origin: center;
+  width: 90%;
+  height: 90%;
+  display: block;
+  --ascii-cube-font-size: calc(var(--intro-ring-size) * 0.03);
+}
+
+#intro-typing {
+  top: calc(100% + clamp(14px, 2.1vmin, 26px));
+}
+
+#intro-typing.is-visible {
+  opacity: 1;
+}
+
+#intro-typing-cursor {
+  animation: intro-cursor-blink 0.9s steps(1, end) infinite;
+}
+
+@keyframes intro-cursor-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes led-breathe {

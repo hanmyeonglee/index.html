@@ -7,10 +7,7 @@ import './ascii-cube.js'
 
 const INTRO_CONFIG = {
     geometry: {
-        viewBoxSize: 100,
         ringRadius: 45,
-        minVisibleSweep: 0.01,
-        maxArcSweep: 359.99,
         ringStrokeWidth: 0.58,
     },
     draw: {
@@ -18,9 +15,6 @@ const INTRO_CONFIG = {
         ease: 'power1.inOut',
     },
     arm: {
-        fadeStartSweep: 322,
-        fadeEndSweep: 360,
-        minVisibleOpacity: 0.01,
         strokeWidth: 0.34,
     },
     pulse: {
@@ -48,62 +42,30 @@ const INTRO_CONFIG = {
         cycleDurationMs: 2000,
         ease: 'none',
         glow: {
-            innerBlurStdDeviation: 2.4,
-            outerBlurStdDeviation: 100,
-            innerAlpha: 0.86,
-            outerAlpha: 0.98,
+            blurStdDeviation: 34,
+            alpha: 0.94,
         },
     },
     glow: {
-        baseInnerBlurStdDeviation: 2.8,
-        baseOuterBlurStdDeviation: 7.8,
+        blurStdDeviation: 5.3,
         blurGain: 1.2,
-        baseInnerAlpha: 0.62,
-        baseOuterAlpha: 0.48,
-        maxInnerAlpha: 0.9,
-        maxOuterAlpha: 0.82,
+        alpha: 0.74,
         alphaGain: 0.22,
     },
     flash: {
         fadeInMs: 400,
         holdMs: 50,
         fadeOutMs: 500,
-        maxOpacity: 0.9,
+        maxOpacity: 1,
     },
-    cube: {
-        fadeInMs: 900,
-        startScale: 0.94,
-        endScale: 1,
-        ease: 'power2.out',
-        offsetXPercent: 0,
-        offsetYPercent: 0,
+    typing: {
+        message: 'Hello, Nemo',
+        startDelayAfterCubeMs: 240,
+        charDelayMs: 66,
     },
     sideGlow: {
-        fadeInMs: 520,
-        maxOpacity: 1,
-        widthVmin: 1.2,
-        widthMinPx: 10,
-        widthMaxPx: 18,
-        heightVh: 78,
-        heightMinPx: 360,
-        heightMaxPx: 860,
         blurPx: 1.6,
-        edgeOffsetVw: 1.5,
-        edgeOffsetMinPx: 8,
-        edgeOffsetMaxPx: 28,
-        gradTop: 'rgba(70, 235, 255, 0.14)',
-        gradUpper: 'rgba(62, 230, 255, 0.84)',
-        gradMid: 'rgba(138, 92, 255, 1)',
-        gradLower: 'rgba(72, 225, 255, 0.84)',
-        gradBottom: 'rgba(90, 190, 255, 0.14)',
-        glowNear: 'rgba(90, 235, 255, 0.88)',
-        glowMid: 'rgba(132, 112, 255, 0.72)',
-        glowFar: 'rgba(156, 94, 255, 0.58)',
-        glowWide: 'rgba(90, 190, 255, 0.42)',
-        glowNearRadiusPx: 20,
-        glowMidRadiusPx: 46,
-        glowFarRadiusPx: 100,
-        glowWideRadiusPx: 150,
+        tone: 'cyan',
     },
 };
 
@@ -136,6 +98,12 @@ export class App extends LitElement {
     @state()
     private isStablePhase = false;
 
+    @state()
+    private typingVisible = false;
+
+    @state()
+    private typedMessage = '';
+
     private drawTween?: gsap.core.Tween;
     private pulseTimeline?: gsap.core.Timeline;
     private shakeTween?: gsap.core.Tween;
@@ -144,6 +112,7 @@ export class App extends LitElement {
     private loaderTween?: gsap.core.Tween;
     private cubeTween?: gsap.core.Tween;
     private sideGlowTween?: gsap.core.Tween;
+    private typingTimeline?: gsap.core.Timeline;
 
     @query('#intro-flash')
     private readonly flashLayer!: HTMLDivElement;
@@ -175,6 +144,7 @@ export class App extends LitElement {
         this.loaderTween?.kill();
         this.cubeTween?.kill();
         this.sideGlowTween?.kill();
+        this.typingTimeline?.kill();
         this.drawTween = undefined;
         this.pulseTimeline = undefined;
         this.shakeTween = undefined;
@@ -183,6 +153,7 @@ export class App extends LitElement {
         this.loaderTween = undefined;
         this.cubeTween = undefined;
         this.sideGlowTween = undefined;
+        this.typingTimeline = undefined;
     }
 
     private startIntroRingAnimation(): void {
@@ -195,9 +166,11 @@ export class App extends LitElement {
         this.shakeOffsetY = 0;
         this.loaderAngle = INTRO_CONFIG.loader.initialAngleDeg;
         this.isStablePhase = false;
+        this.typingVisible = false;
+        this.typedMessage = '';
         gsap.set(this.cubeLayer, {
             opacity: 0,
-            '--intro-cube-scale': INTRO_CONFIG.cube.startScale,
+            '--intro-cube-scale': 0.94,
         });
         gsap.set([this.sideGlowLeft, this.sideGlowRight], { opacity: 0 });
 
@@ -314,8 +287,8 @@ export class App extends LitElement {
                 ease: 'power2.in',
             }, '>')
             .to([this.sideGlowLeft, this.sideGlowRight], {
-                opacity: INTRO_CONFIG.sideGlow.maxOpacity,
-                duration: INTRO_CONFIG.sideGlow.fadeInMs / 1000,
+                opacity: 1,
+                duration: 0.52,
                 ease: 'power2.out',
             }, '<');
     }
@@ -360,10 +333,37 @@ export class App extends LitElement {
 
         this.cubeTween = gsap.to(this.cubeLayer, {
             opacity: 1,
-            '--intro-cube-scale': INTRO_CONFIG.cube.endScale,
-            duration: INTRO_CONFIG.cube.fadeInMs / 1000,
-            ease: INTRO_CONFIG.cube.ease,
+            '--intro-cube-scale': 1,
+            duration: 0.9,
+            ease: 'power2.out',
+            onComplete: () => {
+                this.startTyping();
+            },
         });
+    }
+
+    private startTyping(): void {
+        this.typingTimeline?.kill();
+        this.typingVisible = true;
+        this.typedMessage = '';
+
+        const message = INTRO_CONFIG.typing.message;
+        const timeline = gsap.timeline({
+            delay: INTRO_CONFIG.typing.startDelayAfterCubeMs / 1000,
+        });
+
+        let cursor = 0;
+        for (let idx = 1; idx <= message.length; idx++) {
+            timeline.call(() => {
+                this.typedMessage = message.slice(0, idx);
+            }, [], cursor);
+
+            if (idx < message.length) {
+                cursor += INTRO_CONFIG.typing.charDelayMs / 1000;
+            }
+        }
+
+        this.typingTimeline = timeline;
     }
 
     private lerp(start: number, end: number, t: number): number {
@@ -371,7 +371,8 @@ export class App extends LitElement {
     }
 
     private calculateArmOpacity(sweep: number): number {
-        const { fadeStartSweep, fadeEndSweep } = INTRO_CONFIG.arm;
+        const fadeStartSweep = 322;
+        const fadeEndSweep = 360;
 
         if (sweep <= fadeStartSweep) {
             return 1;
@@ -386,9 +387,9 @@ export class App extends LitElement {
     }
 
     private getRingPath(): string {
-        const clampedSweep = Math.max(INTRO_CONFIG.geometry.minVisibleSweep, Math.min(this.sweepAngle, INTRO_CONFIG.geometry.maxArcSweep));
+        const clampedSweep = Math.max(0.01, Math.min(this.sweepAngle, 359.99));
         const radius = INTRO_CONFIG.geometry.ringRadius;
-        const center = INTRO_CONFIG.geometry.viewBoxSize / 2;
+        const center = 50;
         const startX = center + radius;
         const startY = center;
         const endRadian = (-clampedSweep * Math.PI) / 180;
@@ -400,9 +401,9 @@ export class App extends LitElement {
     }
 
     private getRingEndPoint(): { x: number; y: number } {
-        const clampedSweep = Math.max(INTRO_CONFIG.geometry.minVisibleSweep, Math.min(this.sweepAngle, INTRO_CONFIG.geometry.maxArcSweep));
+        const clampedSweep = Math.max(0.01, Math.min(this.sweepAngle, 359.99));
         const radius = INTRO_CONFIG.geometry.ringRadius;
-        const center = INTRO_CONFIG.geometry.viewBoxSize / 2;
+        const center = 50;
         const endRadian = (-clampedSweep * Math.PI) / 180;
 
         return {
@@ -412,7 +413,7 @@ export class App extends LitElement {
     }
 
     private getLoaderArcPath(): string {
-        const center = INTRO_CONFIG.geometry.viewBoxSize / 2;
+        const center = 50;
         const radius = INTRO_CONFIG.geometry.ringRadius + INTRO_CONFIG.loader.radiusOffset;
         const startAngleDeg = this.loaderAngle;
         const endAngleDeg = startAngleDeg + INTRO_CONFIG.loader.arcSweepDeg;
@@ -429,105 +430,63 @@ export class App extends LitElement {
 
     render() {
         const ringPath = this.getRingPath();
-        const center = INTRO_CONFIG.geometry.viewBoxSize / 2;
+        const center = 50;
         const armEnd = this.getRingEndPoint();
-        const shouldShowArm = this.armOpacity > INTRO_CONFIG.arm.minVisibleOpacity;
+        const shouldShowArm = this.armOpacity > 0.01;
         const glowBlurScale = 1 + (this.glowScale - 1) * INTRO_CONFIG.glow.blurGain;
-        const innerGlowBlur = INTRO_CONFIG.glow.baseInnerBlurStdDeviation * glowBlurScale;
-        const outerGlowBlur = INTRO_CONFIG.glow.baseOuterBlurStdDeviation * glowBlurScale;
-        const innerGlowAlpha = Math.min(
-            INTRO_CONFIG.glow.maxInnerAlpha,
-            INTRO_CONFIG.glow.baseInnerAlpha + (this.glowScale - 1) * INTRO_CONFIG.glow.alphaGain,
-        );
-        const outerGlowAlpha = Math.min(
-            INTRO_CONFIG.glow.maxOuterAlpha,
-            INTRO_CONFIG.glow.baseOuterAlpha + (this.glowScale - 1) * INTRO_CONFIG.glow.alphaGain,
-        );
+        const mainGlowBlur = INTRO_CONFIG.glow.blurStdDeviation * glowBlurScale;
+        const mainGlowAlpha = Math.min(1, INTRO_CONFIG.glow.alpha + (this.glowScale - 1) * INTRO_CONFIG.glow.alphaGain);
         const ringStrokeWidth = INTRO_CONFIG.geometry.ringStrokeWidth * this.strokeScale;
         const armStrokeWidth = INTRO_CONFIG.arm.strokeWidth * this.strokeScale;
         const loaderPath = this.getLoaderArcPath();
-        const loaderGlowInnerBlur = INTRO_CONFIG.loader.glow.innerBlurStdDeviation * (0.9 + this.glowScale * 0.2);
-        const loaderGlowOuterBlur = INTRO_CONFIG.loader.glow.outerBlurStdDeviation * (0.9 + this.glowScale * 0.25);
-        const loaderGlowInnerAlpha = Math.min(1, INTRO_CONFIG.loader.glow.innerAlpha + (this.glowScale - 1) * 0.12);
-        const loaderGlowOuterAlpha = Math.min(1, INTRO_CONFIG.loader.glow.outerAlpha + (this.glowScale - 1) * 0.1);
+        const loaderGlowBlur = INTRO_CONFIG.loader.glow.blurStdDeviation * (0.9 + this.glowScale * 0.22);
+        const loaderGlowAlpha = Math.min(1, INTRO_CONFIG.loader.glow.alpha + (this.glowScale - 1) * 0.12);
         const sideGlowStyle = [
-            `--intro-side-glow-width: clamp(${INTRO_CONFIG.sideGlow.widthMinPx}px, ${INTRO_CONFIG.sideGlow.widthVmin}vmin, ${INTRO_CONFIG.sideGlow.widthMaxPx}px)`,
-            `--intro-side-glow-height: clamp(${INTRO_CONFIG.sideGlow.heightMinPx}px, ${INTRO_CONFIG.sideGlow.heightVh}vh, ${INTRO_CONFIG.sideGlow.heightMaxPx}px)`,
             `--intro-side-glow-blur: ${INTRO_CONFIG.sideGlow.blurPx}px`,
-            `--intro-side-glow-edge-offset: clamp(${INTRO_CONFIG.sideGlow.edgeOffsetMinPx}px, ${INTRO_CONFIG.sideGlow.edgeOffsetVw}vw, ${INTRO_CONFIG.sideGlow.edgeOffsetMaxPx}px)`,
-            `--intro-side-glow-grad-top: ${INTRO_CONFIG.sideGlow.gradTop}`,
-            `--intro-side-glow-grad-upper: ${INTRO_CONFIG.sideGlow.gradUpper}`,
-            `--intro-side-glow-grad-mid: ${INTRO_CONFIG.sideGlow.gradMid}`,
-            `--intro-side-glow-grad-lower: ${INTRO_CONFIG.sideGlow.gradLower}`,
-            `--intro-side-glow-grad-bottom: ${INTRO_CONFIG.sideGlow.gradBottom}`,
-            `--intro-side-glow-near-color: ${INTRO_CONFIG.sideGlow.glowNear}`,
-            `--intro-side-glow-mid-color: ${INTRO_CONFIG.sideGlow.glowMid}`,
-            `--intro-side-glow-far-color: ${INTRO_CONFIG.sideGlow.glowFar}`,
-            `--intro-side-glow-wide-color: ${INTRO_CONFIG.sideGlow.glowWide}`,
-            `--intro-side-glow-near-radius: ${INTRO_CONFIG.sideGlow.glowNearRadiusPx}px`,
-            `--intro-side-glow-mid-radius: ${INTRO_CONFIG.sideGlow.glowMidRadiusPx}px`,
-            `--intro-side-glow-far-radius: ${INTRO_CONFIG.sideGlow.glowFarRadiusPx}px`,
-            `--intro-side-glow-wide-radius: ${INTRO_CONFIG.sideGlow.glowWideRadiusPx}px`,
+            `--intro-side-glow-tone: ${INTRO_CONFIG.sideGlow.tone}`,
         ].join('; ');
         const scaleTransform = `translate(${center} ${center}) scale(${this.ringScale}) translate(${-center} ${-center})`;
         const shakeTransform = `translate(${this.shakeOffsetX} ${this.shakeOffsetY})`;
 
         return html`
-            <div id="intro-stage">
-                <div id="intro-flash" aria-hidden="true"></div>
-                <div id="intro-side-glow-left" class="intro-side-glow" style="${sideGlowStyle}" aria-hidden="true"></div>
-                <div id="intro-side-glow-right" class="intro-side-glow" style="${sideGlowStyle}" aria-hidden="true"></div>
-                <div id="intro-ring" aria-label="intro-circle">
+            <div id="intro-stage" class="relative grid size-full place-items-center">
+                <div id="intro-flash" class="absolute inset-0 z-10 hidden opacity-0 pointer-events-none bg-zinc-100" aria-hidden="true"></div>
+                <div id="intro-side-glow-left" class="intro-side-glow absolute top-1/2 left-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
+                <div id="intro-side-glow-right" class="intro-side-glow absolute top-1/2 right-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
+                <div id="intro-ring" class="relative z-2 grid aspect-square place-items-center" aria-label="intro-circle">
                     <svg
                         id="intro-ring-svg"
-                        viewBox="0 0 ${INTRO_CONFIG.geometry.viewBoxSize} ${INTRO_CONFIG.geometry.viewBoxSize}"
+                        class="size-full overflow-visible"
+                        viewBox="0 0 100 100"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                     >
                         <defs>
                             <filter id="intro-ring-glow-outer" x="-40%" y="-40%" width="180%" height="180%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="${innerGlowBlur}" result="blurInner" />
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="${outerGlowBlur}" result="blurOuter" />
-                                <feComposite in="blurInner" in2="SourceGraphic" operator="out" result="outerGlowInner" />
-                                <feComposite in="blurOuter" in2="SourceGraphic" operator="out" result="outerGlowOuter" />
+                                <feGaussianBlur in="SourceGraphic" stdDeviation="${mainGlowBlur}" result="mainBlur" />
+                                <feComposite in="mainBlur" in2="SourceGraphic" operator="out" result="mainGlow" />
                                 <feColorMatrix
-                                    in="outerGlowInner"
+                                    in="mainGlow"
                                     type="matrix"
-                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${innerGlowAlpha} 0"
-                                    result="glowToneInner"
-                                />
-                                <feColorMatrix
-                                    in="outerGlowOuter"
-                                    type="matrix"
-                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${outerGlowAlpha} 0"
-                                    result="glowToneOuter"
+                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${mainGlowAlpha} 0"
+                                    result="mainGlowTone"
                                 />
                                 <feMerge>
-                                    <feMergeNode in="glowToneOuter" />
-                                    <feMergeNode in="glowToneInner" />
+                                    <feMergeNode in="mainGlowTone" />
                                     <feMergeNode in="SourceGraphic" />
                                 </feMerge>
                             </filter>
                             <filter id="intro-loader-glow-outer" x="-55%" y="-55%" width="210%" height="210%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="${loaderGlowInnerBlur}" result="loaderBlurInner" />
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="${loaderGlowOuterBlur}" result="loaderBlurOuter" />
-                                <feComposite in="loaderBlurInner" in2="SourceGraphic" operator="out" result="loaderGlowInner" />
-                                <feComposite in="loaderBlurOuter" in2="SourceGraphic" operator="out" result="loaderGlowOuter" />
+                                <feGaussianBlur in="SourceGraphic" stdDeviation="${loaderGlowBlur}" result="loaderBlur" />
+                                <feComposite in="loaderBlur" in2="SourceGraphic" operator="out" result="loaderGlow" />
                                 <feColorMatrix
-                                    in="loaderGlowInner"
+                                    in="loaderGlow"
                                     type="matrix"
-                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${loaderGlowInnerAlpha} 0"
-                                    result="loaderGlowInnerTone"
-                                />
-                                <feColorMatrix
-                                    in="loaderGlowOuter"
-                                    type="matrix"
-                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${loaderGlowOuterAlpha} 0"
-                                    result="loaderGlowOuterTone"
+                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${loaderGlowAlpha} 0"
+                                    result="loaderGlowTone"
                                 />
                                 <feMerge>
-                                    <feMergeNode in="loaderGlowOuterTone" />
-                                    <feMergeNode in="loaderGlowInnerTone" />
+                                    <feMergeNode in="loaderGlowTone" />
                                     <feMergeNode in="SourceGraphic" />
                                 </feMerge>
                             </filter>
@@ -564,12 +523,17 @@ export class App extends LitElement {
                             </g>
                         </g>
                     </svg>
-                    <div
-                        id="intro-cube"
-                        aria-hidden="true"
-                        style="--intro-cube-offset-x: ${INTRO_CONFIG.cube.offsetXPercent}%; --intro-cube-offset-y: ${INTRO_CONFIG.cube.offsetYPercent}%;"
-                    >
+                    <div id="intro-cube" class="absolute left-1/2 top-1/2 z-4 grid place-items-center opacity-0 pointer-events-none" aria-hidden="true">
                         <ascii-cube></ascii-cube>
+                    </div>
+                    <div id="intro-typing" class="${this.typingVisible ? 'is-visible' : ''} absolute left-1/2 z-5 w-max -translate-x-1/2 opacity-0 pointer-events-none transition-opacity duration-300 ease-out" aria-live="polite">
+                        <div id="intro-typing-measure" class="invisible whitespace-pre font-mono text-2xl tracking-[0.02em]">$ ${INTRO_CONFIG.typing.message}_</div>
+                        <div id="intro-typing-line" class="absolute inset-0 flex items-center whitespace-pre font-mono text-2xl tracking-[0.02em] text-[rgba(225,255,255,0.98)] [text-shadow:0_0_8px_rgba(116,237,255,0.58),0_0_18px_rgba(92,210,255,0.36)]">
+                            <span id="intro-typing-prompt">$</span>
+                            <span id="intro-typing-space">&nbsp;</span>
+                            <span id="intro-typing-text">${this.typedMessage}</span>
+                            <span id="intro-typing-cursor">_</span>
+                        </div>
                     </div>
                 </div>
             </div>
