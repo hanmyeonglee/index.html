@@ -6,8 +6,8 @@ import { tailwindSheet } from './shared-styles'
 export class BlastDoor extends LitElement {
     @state() private svgWidth = 1;
     @state() private doorHeight = 1;
-    @state() private topPoints = '';
-    @state() private bottomPoints = '';
+    @state() private topPath = '';
+    @state() private bottomPath = '';
 
     private resizeObserver?: ResizeObserver;
 
@@ -42,6 +42,8 @@ export class BlastDoor extends LitElement {
     static CORRECTION_FACTOR = (1 - Math.cos(BlastDoor.DIAG_ANGLE_DEG * Math.PI / 180)) / Math.sin(BlastDoor.DIAG_ANGLE_DEG * Math.PI / 180);
     
     static BLANK_HEIGHT_PX = 15;
+
+    static CORNER_RADIUS_PX = 16;
 
     static styles = css`
         :host {
@@ -105,23 +107,93 @@ export class BlastDoor extends LitElement {
         this.svgWidth = width;
         this.doorHeight = calculatedDoorHeight;
 
-        this.topPoints = [
-            `0,0`,
-            `0,${calculatedDoorHeight}`,
-            `${shortSideLength},${calculatedDoorHeight}`,
-            `${width - longSideLength},${calculatedDoorHeight - diagHeight}`,
-            `${width},${calculatedDoorHeight - diagHeight}`,
-            `${width},0`,
-        ].join(' ');
+        const topVertices = [
+            { x: 0, y: 0 },
+            { x: 0, y: calculatedDoorHeight },
+            { x: shortSideLength, y: calculatedDoorHeight },
+            { x: width - longSideLength, y: calculatedDoorHeight - diagHeight },
+            { x: width, y: calculatedDoorHeight - diagHeight },
+            { x: width, y: 0 },
+        ];
 
-        this.bottomPoints = [
-            `${width},0`,
-            `${width},${calculatedDoorHeight}`,
-            `0,${calculatedDoorHeight}`,
-            `0,${diagHeight}`,
-            `${longSideLength},${diagHeight}`,
-            `${width - shortSideLength},0`,
-        ].join(' ');
+        const bottomVertices = [
+            { x: width, y: 0 },
+            { x: width, y: calculatedDoorHeight },
+            { x: 0, y: calculatedDoorHeight },
+            { x: 0, y: diagHeight },
+            { x: longSideLength, y: diagHeight },
+            { x: width - shortSideLength, y: 0 },
+        ];
+
+        this.topPath = this.buildRoundedPath(topVertices, new Set([1, 2, 3, 4]), BlastDoor.CORNER_RADIUS_PX);
+        this.bottomPath = this.buildRoundedPath(bottomVertices, new Set([0, 3, 4, 5]), BlastDoor.CORNER_RADIUS_PX);
+    }
+
+    private buildRoundedPath(vertices: Array<{ x: number; y: number }>, roundedIndices: Set<number>, radius: number): string {
+        const total = vertices.length;
+        if (total < 3) {
+            return '';
+        }
+
+        const starts: Array<{ x: number; y: number }> = new Array(total);
+        const ends: Array<{ x: number; y: number }> = new Array(total);
+
+        for (let i = 0; i < total; i++) {
+            const previous = vertices[(i - 1 + total) % total];
+            const current = vertices[i];
+            const next = vertices[(i + 1) % total];
+
+            if (!roundedIndices.has(i)) {
+                starts[i] = current;
+                ends[i] = current;
+                continue;
+            }
+
+            const toPrevious = { x: previous.x - current.x, y: previous.y - current.y };
+            const toNext = { x: next.x - current.x, y: next.y - current.y };
+
+            const previousLength = Math.hypot(toPrevious.x, toPrevious.y);
+            const nextLength = Math.hypot(toNext.x, toNext.y);
+
+            if (!previousLength || !nextLength) {
+                starts[i] = current;
+                ends[i] = current;
+                continue;
+            }
+
+            const usableRadius = Math.min(radius, previousLength / 2, nextLength / 2);
+
+            const previousUnit = { x: toPrevious.x / previousLength, y: toPrevious.y / previousLength };
+            const nextUnit = { x: toNext.x / nextLength, y: toNext.y / nextLength };
+
+            starts[i] = {
+                x: current.x + previousUnit.x * usableRadius,
+                y: current.y + previousUnit.y * usableRadius,
+            };
+
+            ends[i] = {
+                x: current.x + nextUnit.x * usableRadius,
+                y: current.y + nextUnit.y * usableRadius,
+            };
+        }
+
+        const lastEnd = ends[total - 1];
+        const commands: string[] = [`M ${lastEnd.x},${lastEnd.y}`];
+
+        for (let i = 0; i < total; i++) {
+            const current = vertices[i];
+            const start = starts[i];
+            const end = ends[i];
+
+            commands.push(`L ${start.x},${start.y}`);
+
+            if (roundedIndices.has(i) && (start.x !== end.x || start.y !== end.y)) {
+                commands.push(`Q ${current.x},${current.y} ${end.x},${end.y}`);
+            }
+        }
+
+        commands.push('Z');
+        return commands.join(' ');
     }
 
     render() {
@@ -133,7 +205,7 @@ export class BlastDoor extends LitElement {
                     viewBox=${`0 0 ${this.svgWidth} ${this.doorHeight}`}
                     preserveAspectRatio="none"
                 >
-                    <polygon class="door-fill" points=${this.topPoints}></polygon>
+                    <path class="door-fill" d=${this.topPath}></path>
                 </svg>
 
                 <svg
@@ -142,7 +214,7 @@ export class BlastDoor extends LitElement {
                     viewBox=${`0 0 ${this.svgWidth} ${this.doorHeight}`}
                     preserveAspectRatio="none"
                 >
-                    <polygon class="door-fill" points=${this.bottomPoints}></polygon>
+                    <path class="door-fill" d=${this.bottomPath}></path>
                 </svg>
             </div>
         `;
