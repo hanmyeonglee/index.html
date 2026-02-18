@@ -2,12 +2,16 @@ import { LitElement, html, css } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { tailwindSheet } from './shared-styles'
 
+type Point = { x: number; y: number };
+
 @customElement('blast-door')
 export class BlastDoor extends LitElement {
     @state() private svgWidth = 1;
     @state() private doorHeight = 1;
     @state() private topPath = '';
     @state() private bottomPath = '';
+    @state() private topInsetPath = '';
+    @state() private bottomInsetPath = '';
 
     private resizeObserver?: ResizeObserver;
 
@@ -48,12 +52,19 @@ export class BlastDoor extends LitElement {
     static styles = css`
         :host {
             --blank-height: ${BlastDoor.BLANK_HEIGHT_PX}px;
+            --door-step-depth: 2vw;
             --short-side-length: calc((100vw * ${1 - BlastDoor.DIAG_WIDTH_RATIO} - ${BlastDoor.CORRECTION_FACTOR} * var(--blank-height)) * 0.5);
             --long-side-length: calc((100vw * ${1 - BlastDoor.DIAG_WIDTH_RATIO} + ${BlastDoor.CORRECTION_FACTOR} * var(--blank-height)) * 0.5);
             --diag-width: calc(100vw * ${BlastDoor.DIAG_WIDTH_RATIO});
             --diag-height: calc(var(--diag-width) * ${Math.tan(BlastDoor.DIAG_ANGLE_DEG * Math.PI / 180)});
             --upside-translate: calc(var(--diag-height) - var(--blank-height));
             --door-height: calc((100vh + var(--upside-translate)) * 0.5);
+        }
+
+        @media (orientation: portrait) {
+            :host {
+                --door-step-depth: 2.5vh;
+            }
         }
 
         .door {
@@ -63,9 +74,37 @@ export class BlastDoor extends LitElement {
         }
 
         .door-fill {
-            fill: gray;
-            width: 100%;
-            height: var(--door-height);
+            fill: #8a8a8a;
+        }
+
+        .door-inner-fill {
+            fill: rgba(0, 0, 0, 0.14);
+        }
+
+        .door-step-shadow {
+            fill: none;
+            stroke: rgba(0, 0, 0, 0.5);
+            stroke-width: 2;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+        }
+
+        .door-step-highlight {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.25);
+            stroke-width: 1;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+            transform: translateY(-0.5px);
+        }
+
+        .door-outer-rim {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-width: 1;
+            stroke-linejoin: round;
+            stroke-linecap: round;
         }
 
         #door-bottom-svg {
@@ -99,6 +138,7 @@ export class BlastDoor extends LitElement {
         const longSideLength = this.resolveCssVarPx('--long-side-length', 'width');
         const diagHeight = this.resolveCssVarPx('--diag-height', 'height');
         const calculatedDoorHeight = this.resolveCssVarPx('--door-height', 'height');
+        const stepDepth = this.resolveCssVarPx('--door-step-depth', 'width');
 
         if (!width || !calculatedDoorHeight) {
             return;
@@ -125,18 +165,92 @@ export class BlastDoor extends LitElement {
             { x: width - shortSideLength, y: 0 },
         ];
 
+        const insetTopVertices = this.buildInsetPolygon(topVertices, stepDepth);
+        const insetBottomVertices = this.buildInsetPolygon(bottomVertices, stepDepth);
+
         this.topPath = this.buildRoundedPath(topVertices, new Set([1, 2, 3, 4]), BlastDoor.CORNER_RADIUS_PX);
         this.bottomPath = this.buildRoundedPath(bottomVertices, new Set([0, 3, 4, 5]), BlastDoor.CORNER_RADIUS_PX);
+        this.topInsetPath = this.buildRoundedPath(insetTopVertices, new Set([1, 2, 3, 4]), Math.max(BlastDoor.CORNER_RADIUS_PX * 0.8, 4));
+        this.bottomInsetPath = this.buildRoundedPath(insetBottomVertices, new Set([0, 3, 4, 5]), Math.max(BlastDoor.CORNER_RADIUS_PX * 0.8, 4));
     }
 
-    private buildRoundedPath(vertices: Array<{ x: number; y: number }>, roundedIndices: Set<number>, radius: number): string {
+    private polygonArea(vertices: Array<Point>): number {
+        return vertices.map((current, i) => {
+            const next = vertices[(i + 1) % vertices.length];
+            return current.x * next.y - next.x * current.y;
+        }).reduce((sum, value) => sum + value, 0) / 2;
+    }
+
+    private lineIntersection(
+        a1: Point,
+        a2: Point,
+        b1: Point,
+        b2: Point,
+    ): Point | null {
+        const a = { x: a2.x - a1.x, y: a2.y - a1.y };
+        const b = { x: b2.x - b1.x, y: b2.y - b1.y };
+        const denominator = a.x * b.y - a.y * b.x;
+
+        if (Math.abs(denominator) < 0.0001) {
+            return null;
+        }
+
+        const delta = { x: b1.x - a1.x, y: b1.y - a1.y };
+        const t = (delta.x * b.y - delta.y * b.x) / denominator;
+
+        return {
+            x: a1.x + a.x * t,
+            y: a1.y + a.y * t,
+        };
+    }
+
+    private buildInsetPolygon(vertices: Array<Point>, insetDistance: number): Array<Point> {
+        if (vertices.length < 3 || insetDistance <= 0) {
+            return vertices;
+        }
+
+        const isCounterClockwise = this.polygonArea(vertices) > 0;
+        const offsetLines: Array<{ start: Point; end: Point }> = vertices
+            .map((start, i) => { return [start, vertices[(i + 1) % vertices.length]]; })
+            .map(([start, end]) => {
+                const edge = { x: end.x - start.x, y: end.y - start.y };
+                const length = Math.hypot(edge.x, edge.y);
+
+                if (!length) return { start, end };
+
+                const inwardNormal = isCounterClockwise
+                    ? { x: -edge.y / length, y: edge.x / length }
+                    : { x: edge.y / length, y: -edge.x / length };
+
+                const offset = { x: inwardNormal.x * insetDistance, y: inwardNormal.y * insetDistance };
+
+                return {
+                    start: { x: start.x + offset.x, y: start.y + offset.y },
+                    end: { x: end.x + offset.x, y: end.y + offset.y },
+                };
+            });
+
+        const insetVertices: Array<Point> = Array.from({ length: vertices.length })
+            .map((_, i) => { return [offsetLines[(i - 1 + offsetLines.length) % offsetLines.length], offsetLines[i]]; })
+            .map(([prev, current]) => 
+                this.lineIntersection(
+                    prev.start,
+                    prev.end,
+                    current.start,
+                    current.end,
+                ) ?? current.start);
+
+        return insetVertices;
+    }
+
+    private buildRoundedPath(vertices: Array<Point>, roundedIndices: Set<number>, radius: number): string {
         const total = vertices.length;
         if (total < 3) {
             return '';
         }
 
-        const starts: Array<{ x: number; y: number }> = new Array(total);
-        const ends: Array<{ x: number; y: number }> = new Array(total);
+        const starts: Array<Point> = new Array(total);
+        const ends: Array<Point> = new Array(total);
 
         for (let i = 0; i < total; i++) {
             const previous = vertices[(i - 1 + total) % total];
@@ -206,6 +320,10 @@ export class BlastDoor extends LitElement {
                     preserveAspectRatio="none"
                 >
                     <path class="door-fill" d=${this.topPath}></path>
+                    <path class="door-inner-fill" d=${this.topInsetPath}></path>
+                    <path class="door-step-shadow" d=${this.topInsetPath}></path>
+                    <path class="door-step-highlight" d=${this.topInsetPath}></path>
+                    <path class="door-outer-rim" d=${this.topPath}></path>
                 </svg>
 
                 <svg
@@ -215,6 +333,10 @@ export class BlastDoor extends LitElement {
                     preserveAspectRatio="none"
                 >
                     <path class="door-fill" d=${this.bottomPath}></path>
+                    <path class="door-inner-fill" d=${this.bottomInsetPath}></path>
+                    <path class="door-step-shadow" d=${this.bottomInsetPath}></path>
+                    <path class="door-step-highlight" d=${this.bottomInsetPath}></path>
+                    <path class="door-outer-rim" d=${this.bottomPath}></path>
                 </svg>
             </div>
         `;
