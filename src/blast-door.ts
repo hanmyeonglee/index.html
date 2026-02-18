@@ -12,6 +12,8 @@ export class BlastDoor extends LitElement {
     @state() private bottomPath = '';
     @state() private topInsetPath = '';
     @state() private bottomInsetPath = '';
+    @state() private topGlowPath = '';
+    @state() private bottomGlowPath = '';
 
     private resizeObserver?: ResizeObserver;
 
@@ -45,7 +47,7 @@ export class BlastDoor extends LitElement {
     static DIAG_ANGLE_DEG = 20;
     static CORRECTION_FACTOR = (1 - Math.cos(BlastDoor.DIAG_ANGLE_DEG * Math.PI / 180)) / Math.sin(BlastDoor.DIAG_ANGLE_DEG * Math.PI / 180);
     
-    static BLANK_HEIGHT_PX = 15;
+    static BLANK_HEIGHT_PX = 10;
 
     static CORNER_RADIUS_PX = 16;
 
@@ -105,6 +107,22 @@ export class BlastDoor extends LitElement {
             stroke-width: 1;
             stroke-linejoin: round;
             stroke-linecap: round;
+        }
+
+        .door-glow-halo {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            opacity: 0.65;
+            filter: blur(4px);
+        }
+
+        .door-glow-core {
+            fill: none;
+            stroke-width: 2.4;
+            stroke-linecap: round;
+            opacity: 0.95;
+            filter: drop-shadow(0 0 3px rgba(59, 255, 255, 0.65)) drop-shadow(0 0 6px rgba(160, 86, 255, 0.55));
         }
 
         #door-bottom-svg {
@@ -167,11 +185,58 @@ export class BlastDoor extends LitElement {
 
         const insetTopVertices = this.buildInsetPolygon(topVertices, stepDepth);
         const insetBottomVertices = this.buildInsetPolygon(bottomVertices, stepDepth);
+        const glowTrim = Math.max(10, stepDepth * 0.8);
 
         this.topPath = this.buildRoundedPath(topVertices, new Set([1, 2, 3, 4]), BlastDoor.CORNER_RADIUS_PX);
         this.bottomPath = this.buildRoundedPath(bottomVertices, new Set([0, 3, 4, 5]), BlastDoor.CORNER_RADIUS_PX);
         this.topInsetPath = this.buildRoundedPath(insetTopVertices, new Set([1, 2, 3, 4]), Math.max(BlastDoor.CORNER_RADIUS_PX * 0.8, 4));
         this.bottomInsetPath = this.buildRoundedPath(insetBottomVertices, new Set([0, 3, 4, 5]), Math.max(BlastDoor.CORNER_RADIUS_PX * 0.8, 4));
+
+        this.topGlowPath = this.buildTrimmedPolylinePath(
+            [topVertices[1], topVertices[2], topVertices[3], topVertices[4]],
+            glowTrim,
+            glowTrim,
+        );
+        this.bottomGlowPath = this.buildTrimmedPolylinePath(
+            [bottomVertices[3], bottomVertices[4], bottomVertices[5], bottomVertices[0]],
+            glowTrim,
+            glowTrim,
+        );
+    }
+
+    private movePointToward(from: Point, to: Point, distance: number): Point {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy);
+
+        if (!length || distance <= 0) {
+            return from;
+        }
+
+        const t = Math.min(1, distance / length);
+        return {
+            x: from.x + dx * t,
+            y: from.y + dy * t,
+        };
+    }
+
+    private buildTrimmedPolylinePath(points: Array<Point>, trimStart: number, trimEnd: number): string {
+        if (points.length < 2) {
+            return '';
+        }
+
+        const pathPoints = points.map((point) => ({ ...point }));
+        pathPoints[0] = this.movePointToward(pathPoints[0], pathPoints[1], trimStart);
+
+        const last = pathPoints.length - 1;
+        pathPoints[last] = this.movePointToward(pathPoints[last], pathPoints[last - 1], trimEnd);
+
+        const commands: string[] = [`M ${pathPoints[0].x},${pathPoints[0].y}`];
+        for (let i = 1; i < pathPoints.length; i++) {
+            commands.push(`L ${pathPoints[i].x},${pathPoints[i].y}`);
+        }
+
+        return commands.join(' ');
     }
 
     private polygonArea(vertices: Array<Point>): number {
@@ -319,10 +384,18 @@ export class BlastDoor extends LitElement {
                     viewBox=${`0 0 ${this.svgWidth} ${this.doorHeight}`}
                     preserveAspectRatio="none"
                 >
+                    <defs>
+                        <linearGradient id="top-led-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#2efbff"></stop>
+                            <stop offset="100%" stop-color="#a86aff"></stop>
+                        </linearGradient>
+                    </defs>
                     <path class="door-fill" d=${this.topPath}></path>
                     <path class="door-inner-fill" d=${this.topInsetPath}></path>
                     <path class="door-step-shadow" d=${this.topInsetPath}></path>
                     <path class="door-step-highlight" d=${this.topInsetPath}></path>
+                    <path class="door-glow-halo" d=${this.topGlowPath} stroke="url(#top-led-gradient)"></path>
+                    <path class="door-glow-core" d=${this.topGlowPath} stroke="url(#top-led-gradient)"></path>
                     <path class="door-outer-rim" d=${this.topPath}></path>
                 </svg>
 
@@ -332,10 +405,18 @@ export class BlastDoor extends LitElement {
                     viewBox=${`0 0 ${this.svgWidth} ${this.doorHeight}`}
                     preserveAspectRatio="none"
                 >
+                    <defs>
+                        <linearGradient id="bottom-led-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#2efbff"></stop>
+                            <stop offset="100%" stop-color="#a86aff"></stop>
+                        </linearGradient>
+                    </defs>
                     <path class="door-fill" d=${this.bottomPath}></path>
                     <path class="door-inner-fill" d=${this.bottomInsetPath}></path>
                     <path class="door-step-shadow" d=${this.bottomInsetPath}></path>
                     <path class="door-step-highlight" d=${this.bottomInsetPath}></path>
+                    <path class="door-glow-halo" d=${this.bottomGlowPath} stroke="url(#bottom-led-gradient)"></path>
+                    <path class="door-glow-core" d=${this.bottomGlowPath} stroke="url(#bottom-led-gradient)"></path>
                     <path class="door-outer-rim" d=${this.bottomPath}></path>
                 </svg>
             </div>
