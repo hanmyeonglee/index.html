@@ -1,0 +1,135 @@
+root-app {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+  user-select: none;
+
+  --intro-ring-size: clamp(160px, 34vmin, 300px);
+  --intro-ring-stroke: clamp(1.2px, 0.28vmin, 2.4px);
+  --intro-ring-offset-y: clamp(-96px, -10vh, -36px);
+  --intro-ring-arm-opacity: 0.9;
+  --intro-ring-breathe-duration: 1.8s;
+  --intro-ring-breathe-min-opacity: 0.88;
+  --intro-ring-breathe-max-opacity: 1;
+}
+
+#intro-stage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+#intro-flash {
+  position: absolute;
+  inset: 0;
+  background: rgb(245 245 245);
+  opacity: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.intro-side-glow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--intro-side-glow-width, clamp(10px, 1.2vmin, 18px));
+  height: var(--intro-side-glow-height, clamp(360px, 78vh, 860px));
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    var(--intro-side-glow-grad-top, rgba(70, 235, 255, 0.14)) 0%,
+    var(--intro-side-glow-grad-upper, rgba(62, 230, 255, 0.84)) 18%,
+    var(--intro-side-glow-grad-mid, rgba(138, 92, 255, 1)) 50%,
+    var(--intro-side-glow-grad-lower, rgba(72, 225, 255, 0.84)) 82%,
+    var(--intro-side-glow-grad-bottom, rgba(90, 190, 255, 0.14)) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(var(--intro-side-glow-blur, 1.6px));
+  box-shadow:
+    0 0 var(--intro-side-glow-near-radius, 20px) var(--intro-side-glow-near-color, rgba(90, 235, 255, 0.88)),
+    0 0 var(--intro-side-glow-mid-radius, 46px) var(--intro-side-glow-mid-color, rgba(132, 112, 255, 0.72)),
+    0 0 var(--intro-side-glow-far-radius, 100px) var(--intro-side-glow-far-color, rgba(156, 94, 255, 0.58)),
+    0 0 var(--intro-side-glow-wide-radius, 150px) var(--intro-side-glow-wide-color, rgba(90, 190, 255, 0.42));
+  z-index: 3;
+}
+
+#intro-side-glow-left {
+  left: var(--intro-side-glow-edge-offset, clamp(8px, 1.5vw, 28px));
+}
+
+#intro-side-glow-right {
+  right: var(--intro-side-glow-edge-offset, clamp(8px, 1.5vw, 28px));
+}
+
+#intro-ring {
+  width: var(--intro-ring-size);
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  transform: translateY(var(--intro-ring-offset-y));
+  position: relative;
+  z-index: 2;
+}
+
+#intro-ring-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#intro-ring-path {
+  stroke: rgba(255, 255, 255, 0.98);
+  stroke-linecap: round;
+  filter: url(#intro-ring-glow-outer);
+  animation: led-breathe var(--intro-ring-breathe-duration) ease-in-out infinite;
+}
+
+#intro-ring-loader {
+  stroke: rgba(255, 255, 255, 0.98);
+  stroke-linecap: round;
+  fill: none;
+  filter: url(#intro-loader-glow-outer);
+}
+
+#intro-ring-arm {
+  stroke: rgba(255, 255, 255, var(--intro-ring-arm-opacity));
+  stroke-linecap: round;
+  filter: url(#intro-ring-glow-outer);
+}
+
+#intro-cube {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  --intro-cube-scale: 0.94;
+  --intro-cube-offset-x: 0%;
+  --intro-cube-offset-y: 0%;
+  transform: translate(calc(-50% + var(--intro-cube-offset-x)), calc(-50% + var(--intro-cube-offset-y))) scale(var(--intro-cube-scale));
+  pointer-events: none;
+  z-index: 4;
+}
+
+#intro-cube ascii-cube {
+  transform: scale(0.72);
+  transform-origin: center;
+}
+
+@keyframes led-breathe {
+  0%,
+  100% {
+    opacity: var(--intro-ring-breathe-min-opacity);
+  }
+
+  50% {
+    opacity: var(--intro-ring-breathe-max-opacity);
+  }
+}
