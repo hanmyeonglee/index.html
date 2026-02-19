@@ -4,6 +4,7 @@ import gsap from 'gsap'
 
 import "./App.css";
 import './ascii-cube.js'
+import './intro-background-effects.ts'
 
 type IntroPhase = 'draw' | 'pulse' | 'stable' | 'typing';
 
@@ -94,6 +95,9 @@ export class App extends LitElement {
     @state()
     private typedMessage = '';
 
+    @state()
+    private backgroundReady = false;
+
     private masterTimeline?: gsap.core.Timeline;
 
     @query('#intro-flash')
@@ -132,6 +136,7 @@ export class App extends LitElement {
         this.shakeOffsetY = 0;
         this.loaderAngle = INTRO_CONFIG.loader.initialAngleDeg;
         this.typedMessage = '';
+        this.backgroundReady = false;
         gsap.set(this.cubeLayer, {
             opacity: 0,
             '--intro-cube-scale': 0.94,
@@ -186,6 +191,10 @@ export class App extends LitElement {
                 master.to({}, { duration: INTRO_CONFIG.typing.charDelayMs / 1000 });
             }
         }
+
+        master.call(() => {
+            this.backgroundReady = true;
+        });
 
         this.masterTimeline = master;
     }
@@ -380,6 +389,11 @@ export class App extends LitElement {
 
         return html`
             <div id="intro-stage" class="relative grid size-full place-items-center">
+                <div id="intro-background-slot" class="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                    ${this.backgroundReady
+                        ? html`<intro-background-effects></intro-background-effects>`
+                        : null}
+                </div>
                 <div id="intro-flash" class="absolute inset-0 z-10 hidden opacity-0 pointer-events-none bg-zinc-100" aria-hidden="true"></div>
                 <div id="intro-side-glow-left" class="intro-side-glow absolute top-1/2 left-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
                 <div id="intro-side-glow-right" class="intro-side-glow absolute top-1/2 right-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>

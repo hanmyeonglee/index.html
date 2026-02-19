@@ -15,12 +15,6 @@ root-app {
   --intro-ring-breathe-max-opacity: 1;
 }
 
-#intro-stage {
-}
-
-#intro-flash {
-}
-
 .intro-side-glow {
   width: clamp(10px, 1.2vmin, 18px);
   height: clamp(360px, 78vh, 860px);
@@ -37,18 +31,9 @@ root-app {
     0 0 140px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92));
 }
 
-#intro-side-glow-left {
-}
-
-#intro-side-glow-right {
-}
-
 #intro-ring {
   width: var(--intro-ring-size);
   transform: translateY(var(--intro-ring-offset-y));
-}
-
-#intro-ring-svg {
 }
 
 #intro-ring-path {
