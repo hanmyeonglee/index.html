@@ -8,27 +8,37 @@ import './intro-background-effects.ts'
 
 type IntroPhase = 'draw' | 'pulse' | 'stable' | 'typing';
 
+type PulseParticle = {
+    id: number;
+    angleDeg: number;
+    durationSec: number;
+    travelPx: number;
+    delaySec: number;
+    sizePx: number;
+    alpha: number;
+};
+
 const INTRO_CONFIG = {
     geometry: {
         ringRadius: 45,
-        ringStrokeWidth: 0.58,
+        ringStrokeWidth: 1,
     },
     draw: {
         durationMs: 1800,
         ease: 'power1.inOut',
     },
     arm: {
-        strokeWidth: 0.34,
+        strokeWidth: 0.5,
     },
     pulse: {
         count: 4,
-        expandDurationMs: 500,
-        settleDurationMs: 750,
-        ringScaleGain: 0.065,
+        expandDurationMs: 250,
+        settleDurationMs: 400,
+        ringScaleGain: 0.15,
         strokeScaleGain: 0.55,
-        glowScaleGain: 1.35,
-        shakeAmplitudeMin: 0,
-        shakeAmplitudeMax: 0,
+        glowScaleGain: 2,
+        shakeAmplitudeMin: 0.05,
+        shakeAmplitudeMax: 1.05,
     },
     stablePulse: {
         durationMs: 1300,
@@ -98,7 +108,17 @@ export class App extends LitElement {
     @state()
     private backgroundReady = false;
 
+    @state()
+    private pulseParticles: PulseParticle[] = [];
+
+    @state()
+    private ringFillVisible = true;
+
     private masterTimeline?: gsap.core.Timeline;
+
+    private particleIdSeed = 0;
+
+    private readonly particleCleanupCalls = new Map<number, gsap.core.Tween>();
 
     @query('#intro-flash')
     private readonly flashLayer!: HTMLDivElement;
@@ -122,6 +142,7 @@ export class App extends LitElement {
 
     disconnectedCallback(): void {
         super.disconnectedCallback();
+        this.clearPulseParticles();
         this.masterTimeline?.kill();
         this.masterTimeline = undefined;
     }
@@ -137,6 +158,8 @@ export class App extends LitElement {
         this.loaderAngle = INTRO_CONFIG.loader.initialAngleDeg;
         this.typedMessage = '';
         this.backgroundReady = false;
+        this.ringFillVisible = true;
+        this.clearPulseParticles();
         gsap.set(this.cubeLayer, {
             opacity: 0,
             '--intro-cube-scale': 0.94,
@@ -201,20 +224,38 @@ export class App extends LitElement {
 
     private createPulseTimeline(): gsap.core.Timeline {
         const timeline = gsap.timeline();
+        const pulseCount = INTRO_CONFIG.pulse.count;
+        const baseGrowSec = INTRO_CONFIG.pulse.expandDurationMs / 1000;
+        const baseSettleSec = INTRO_CONFIG.pulse.settleDurationMs / 1000;
+        const paceBias = 0.36;
+        const rawPaceFactors = Array.from({ length: pulseCount }, (_, idx) => {
+            const progress = pulseCount <= 1 ? 0 : idx / (pulseCount - 1);
+            return gsap.utils.interpolate(1 + paceBias, 1 - paceBias, progress);
+        });
+        const meanPaceFactor = rawPaceFactors.reduce((sum, factor) => sum + factor, 0) / pulseCount;
 
-        for (let idx = 0; idx < INTRO_CONFIG.pulse.count; idx++) {
-            const isLastPulse = idx === INTRO_CONFIG.pulse.count - 1;
-            const intensity = (idx + 1) / INTRO_CONFIG.pulse.count;
-            const shakeAmp = this.lerp(INTRO_CONFIG.pulse.shakeAmplitudeMin, INTRO_CONFIG.pulse.shakeAmplitudeMax, intensity);
-            const growSec = INTRO_CONFIG.pulse.expandDurationMs / 1000;
-            const settleSec = INTRO_CONFIG.pulse.settleDurationMs / 1000;
+        for (let idx = 0; idx < pulseCount; idx++) {
+            const isLastPulse = idx === pulseCount - 1;
+            const intensity = (idx + 1) / pulseCount;
+            const shakeAmp = gsap.utils.interpolate(INTRO_CONFIG.pulse.shakeAmplitudeMin, INTRO_CONFIG.pulse.shakeAmplitudeMax, intensity);
+            const paceFactor = rawPaceFactors[idx] / meanPaceFactor;
+            const growSec = baseGrowSec * paceFactor;
+            const settleSec = baseSettleSec * paceFactor;
             const shakeDurationSec = growSec + settleSec;
+
+            if (!isLastPulse) {
+                timeline.call(() => {
+                    this.emitPulseParticles(intensity);
+                });
+            }
 
             timeline.to(this, {
                 pulseLevel: intensity,
                 duration: growSec,
                 ease: 'power2.out',
             });
+
+            timeline.addLabel('growEnd');
 
             timeline.to({}, {
                 duration: shakeDurationSec,
@@ -230,7 +271,7 @@ export class App extends LitElement {
             }, `<`);
 
             if (isLastPulse) {
-                timeline.add(this.createFlashTimeline(), '>');
+                timeline.add(this.createFlashTimeline(), '<');
             }
 
             timeline.to(this, {
@@ -246,6 +287,7 @@ export class App extends LitElement {
     private createFlashTimeline(): gsap.core.Timeline {
         const timeline = gsap.timeline({
             onStart: () => {
+                this.clearPulseParticles();
                 gsap.set(this.flashLayer, { display: 'block', opacity: 0 });
             },
             onComplete: () => {
@@ -258,6 +300,9 @@ export class App extends LitElement {
                 opacity: INTRO_CONFIG.flash.maxOpacity,
                 duration: INTRO_CONFIG.flash.fadeInMs / 1000,
                 ease: 'power2.out',
+            })
+            .call(() => {
+                this.ringFillVisible = false;
             })
             .to(this.flashLayer, {
                 opacity: INTRO_CONFIG.flash.maxOpacity,
@@ -299,28 +344,64 @@ export class App extends LitElement {
         return stableLoop;
     }
 
-    private lerp(start: number, end: number, t: number): number {
-        return start + (end - start) * t;
+    private emitPulseParticles(intensity: number): void {
+        const burstCount = Math.round(gsap.utils.interpolate(140, 420, intensity));
+        const durationSec = gsap.utils.interpolate(0.95, 1.85, intensity);
+        const particles = Array.from({ length: burstCount }, () => {
+            const particleId = ++this.particleIdSeed;
+            const spreadJitter = gsap.utils.random(-1.4, 1.4, 0.01);
+
+            return {
+                id: particleId,
+                angleDeg: gsap.utils.random(0, 360) + spreadJitter,
+                durationSec: gsap.utils.random(durationSec * 0.86, durationSec * 1.14, 0.001),
+                travelPx: gsap.utils.random(
+                    gsap.utils.interpolate(86, 164, intensity),
+                    gsap.utils.interpolate(224, 362, intensity),
+                    0.1,
+                ),
+                delaySec: gsap.utils.random(0, gsap.utils.interpolate(0.03, 0.07, intensity), 0.001),
+                sizePx: gsap.utils.random(2, gsap.utils.interpolate(1.4, 2.2, intensity), 0.1),
+                alpha: gsap.utils.random(0.9, gsap.utils.interpolate(0.86, 0.98, intensity), 0.01),
+            } satisfies PulseParticle;
+        });
+
+        this.pulseParticles = [...this.pulseParticles, ...particles];
+
+        for (const particle of particles) {
+            const cleanupCall = gsap.delayedCall(particle.durationSec + particle.delaySec + 0.24, () => {
+                this.removePulseParticle(particle.id);
+            });
+
+            this.particleCleanupCalls.set(particle.id, cleanupCall);
+        }
+    }
+
+    private removePulseParticle(particleId: number): void {
+        this.pulseParticles = this.pulseParticles.filter((particle) => particle.id !== particleId);
+        this.particleCleanupCalls.get(particleId)?.kill();
+        this.particleCleanupCalls.delete(particleId);
+    }
+
+    private clearPulseParticles(): void {
+        for (const cleanupCall of this.particleCleanupCalls.values()) {
+            cleanupCall.kill();
+        }
+
+        this.particleCleanupCalls.clear();
+        this.pulseParticles = [];
     }
 
     private calculateArmOpacity(sweep: number): number {
         const fadeStartSweep = 322;
         const fadeEndSweep = 360;
-
-        if (sweep <= fadeStartSweep) {
-            return 1;
-        }
-
-        if (sweep >= fadeEndSweep) {
-            return 0;
-        }
-
-        const progress = (sweep - fadeStartSweep) / (fadeEndSweep - fadeStartSweep);
-        return Math.max(0, 1 - progress * progress);
+        const progress = gsap.utils.normalize(fadeStartSweep, fadeEndSweep, sweep);
+        const clampedProgress = gsap.utils.clamp(0, 1, progress);
+        return 1 - clampedProgress * clampedProgress;
     }
 
     private getRingPath(): string {
-        const clampedSweep = Math.max(0.01, Math.min(this.sweepAngle, 359.99));
+        const clampedSweep = gsap.utils.clamp(0.01, 359.99, this.sweepAngle);
         const radius = INTRO_CONFIG.geometry.ringRadius;
         const center = 50;
         const startX = center + radius;
@@ -333,8 +414,22 @@ export class App extends LitElement {
         return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 0 ${endX} ${endY}`;
     }
 
+    private getRingFillPath(sweep: number): string {
+        const clampedSweep = gsap.utils.clamp(0.01, 359.99, sweep);
+        const radius = INTRO_CONFIG.geometry.ringRadius;
+        const center = 50;
+        const startX = center + radius;
+        const startY = center;
+        const endRadian = (-clampedSweep * Math.PI) / 180;
+        const endX = center + radius * Math.cos(endRadian);
+        const endY = center + radius * Math.sin(endRadian);
+        const largeArc = clampedSweep > 180 ? 1 : 0;
+
+        return `M ${center} ${center} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 0 ${endX} ${endY} Z`;
+    }
+
     private getRingEndPoint(): { x: number; y: number } {
-        const clampedSweep = Math.max(0.01, Math.min(this.sweepAngle, 359.99));
+        const clampedSweep = gsap.utils.clamp(0.01, 359.99, this.sweepAngle);
         const radius = INTRO_CONFIG.geometry.ringRadius;
         const center = 50;
         const endRadian = (-clampedSweep * Math.PI) / 180;
@@ -364,6 +459,10 @@ export class App extends LitElement {
     render() {
         const ringPath = this.getRingPath();
         const center = 50;
+        const fillSweep = gsap.utils.clamp(0, 360, this.sweepAngle);
+        const isFullFill = fillSweep >= 359.99;
+        const shouldShowFill = this.ringFillVisible;
+        const ringFillPath = this.getRingFillPath(fillSweep);
         const armEnd = this.getRingEndPoint();
         const armOpacity = this.phase === 'draw' ? this.calculateArmOpacity(this.sweepAngle) : 0;
         const shouldShowArm = armOpacity > 0.01;
@@ -384,6 +483,18 @@ export class App extends LitElement {
             `--intro-side-glow-blur: ${INTRO_CONFIG.sideGlow.blurPx}px`,
             `--intro-side-glow-tone: ${INTRO_CONFIG.sideGlow.tone}`,
         ].join('; ');
+        const pulseParticleNodes = this.pulseParticles.map((particle) => {
+            const particleStyle = [
+                `--particle-angle: ${particle.angleDeg}deg`,
+                `--particle-duration: ${particle.durationSec}s`,
+                `--particle-delay: ${particle.delaySec}s`,
+                `--particle-travel: ${particle.travelPx}px`,
+                `--particle-size: ${particle.sizePx}px`,
+                `--particle-alpha: ${particle.alpha}`,
+            ].join('; ');
+
+            return html`<span class="intro-pulse-particle" style="${particleStyle}"></span>`;
+        });
         const scaleTransform = `translate(${center} ${center}) scale(${ringScale}) translate(${-center} ${-center})`;
         const shakeTransform = `translate(${this.shakeOffsetX} ${this.shakeOffsetY})`;
 
@@ -398,6 +509,9 @@ export class App extends LitElement {
                 <div id="intro-side-glow-left" class="intro-side-glow absolute top-1/2 left-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
                 <div id="intro-side-glow-right" class="intro-side-glow absolute top-1/2 right-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
                 <div id="intro-ring" class="relative z-2 grid aspect-square place-items-center" aria-label="intro-circle">
+                    <div id="intro-ring-particles" class="absolute inset-0 z-1 pointer-events-none" aria-hidden="true">
+                        ${pulseParticleNodes}
+                    </div>
                     <svg
                         id="intro-ring-svg"
                         class="size-full overflow-visible"
@@ -437,6 +551,23 @@ export class App extends LitElement {
                         </defs>
                         <g transform="${shakeTransform}">
                             <g transform="${scaleTransform}">
+                                ${shouldShowFill
+                                    ? (isFullFill
+                                        ? svg`
+                                            <circle
+                                                id="intro-ring-fill"
+                                                cx="${center}"
+                                                cy="${center}"
+                                                r="${INTRO_CONFIG.geometry.ringRadius}"
+                                            />
+                                        `
+                                        : svg`
+                                            <path
+                                                id="intro-ring-fill"
+                                                d="${ringFillPath}"
+                                            />
+                                        `)
+                                    : null}
                                 ${shouldShowArm
                                     ? svg`
                                         <line
