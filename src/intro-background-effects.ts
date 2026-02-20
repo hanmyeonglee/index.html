@@ -27,13 +27,13 @@ type MatrixDrop = {
 };
 
 const MATRIX_CONFIG: MatrixDropConfig = {
-    chars: '01アイウエオカキクケコサシスセソZXCVBNM',
-    spawnDelayMean: 1020,
-    spawnDelayStd: 480,
-    durationMsMean: 3080,
-    durationMsStd: 420,
-    scaleMean: 1.5,
-    scaleStd: 0.5,
+    chars: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~',
+    spawnDelayMean: 250,
+    spawnDelayStd: 50,
+    durationMsMean: 2880,
+    durationMsStd: 920,
+    scaleMean: 2,
+    scaleStd: 0.75,
     changePossibility: 0.6,
 };
 
