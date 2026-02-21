@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { tailwindSheet } from './shared-styles';
 import './intro-matrix-rain.ts';
+import './intro-laser-beam.ts';
 
 @customElement('intro-background-effects')
 export class IntroBackgroundEffects extends LitElement {
@@ -12,11 +13,6 @@ export class IntroBackgroundEffects extends LitElement {
             display: block;
             overflow: hidden;
             pointer-events: none;
-        }
-
-        .intro-bg-laser {
-            position: absolute;
-            inset: 0;
         }
     `;
 
@@ -39,7 +35,7 @@ export class IntroBackgroundEffects extends LitElement {
     render() {
         return html`
             <intro-matrix-rain></intro-matrix-rain>
-            <div class="intro-bg-laser absolute inset-0"></div>
+            <intro-laser-beam></intro-laser-beam>
         `;
     }
 }
