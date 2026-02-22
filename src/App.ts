@@ -479,6 +479,7 @@ export class App extends LitElement {
         const loaderPath = this.getLoaderArcPath();
         const loaderGlowBlur = INTRO_CONFIG.loader.glow.blurStdDeviation * (0.9 + glowScale * 0.22);
         const loaderGlowAlpha = Math.min(1, INTRO_CONFIG.loader.glow.alpha + (glowScale - 1) * 0.12);
+        const showLoaderArc = false;
         const sideGlowStyle = [
             `--intro-side-glow-blur: ${INTRO_CONFIG.sideGlow.blurPx}px`,
             `--intro-side-glow-tone: ${INTRO_CONFIG.sideGlow.tone}`,
@@ -581,12 +582,16 @@ export class App extends LitElement {
                                         ></line>
                                     `
                                     : null}
-                                <path
-                                    id="intro-ring-path"
-                                    d="${ringPath}"
-                                    stroke-width="${ringStrokeWidth}"
-                                />
-                                ${isStableLike
+                                ${this.ringFillVisible
+                                    ? svg`
+                                        <path
+                                            id="intro-ring-path"
+                                            d="${ringPath}"
+                                            stroke-width="${ringStrokeWidth}"
+                                        />
+                                    `
+                                    : null}
+                                ${showLoaderArc && isStableLike
                                     ? svg`
                                         <path
                                             id="intro-ring-loader"
