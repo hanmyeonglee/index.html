@@ -13,22 +13,47 @@ root-app {
   --intro-ring-breathe-duration: 1.8s;
   --intro-ring-breathe-min-opacity: 0.88;
   --intro-ring-breathe-max-opacity: 1;
+  --intro-side-fog-breathe-duration: 6.8s;
 }
 
 .intro-side-glow {
-  width: clamp(10px, 1.2vmin, 18px);
-  height: clamp(360px, 78vh, 860px);
-  background: linear-gradient(
-    to bottom,
-    rgba(70, 235, 255, 0.14) 0%,
-    var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)) 50%,
-    rgba(70, 235, 255, 0.14) 100%
-  );
+  width: clamp(64px, 9vw, 148px);
+  height: 132vh;
+  color: var(--intro-side-glow-tone, cyan);
+  isolation: isolate;
+}
+
+.intro-side-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  opacity: 0.56;
   filter: blur(var(--intro-side-glow-blur, 1.6px));
-  box-shadow:
-    0 0 24px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)),
-    0 0 72px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92)),
-    0 0 140px var(--intro-side-glow-tone, rgba(138, 92, 255, 0.92));
+  animation: intro-side-fog-breathe var(--intro-side-fog-breathe-duration, 6.8s) ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+#intro-side-glow-left::before {
+  background: radial-gradient(
+    ellipse 125% 58% at 0% 50%,
+    currentColor 0%,
+    rgba(88, 238, 255, 0.46) 34%,
+    rgba(88, 238, 255, 0.2) 58%,
+    rgba(88, 238, 255, 0.06) 70%,
+    transparent 82%
+  );
+}
+
+#intro-side-glow-right::before {
+  background: radial-gradient(
+    ellipse 125% 58% at 100% 50%,
+    currentColor 0%,
+    rgba(88, 238, 255, 0.46) 34%,
+    rgba(88, 238, 255, 0.2) 58%,
+    rgba(88, 238, 255, 0.06) 70%,
+    transparent 82%
+  );
 }
 
 #intro-ring {
@@ -152,5 +177,18 @@ root-app {
   100% {
     opacity: 0;
     transform: rotate(var(--particle-angle, 0deg)) translateY(calc(var(--intro-ring-size) * -0.45 - var(--particle-travel, 36px))) scale(0.18);
+  }
+}
+
+@keyframes intro-side-fog-breathe {
+  0%,
+  100% {
+    opacity: 0.44;
+    filter: blur(var(--intro-side-glow-blur, 1.6px)) brightness(0.84);
+  }
+
+  50% {
+    opacity: 0.76;
+    filter: blur(var(--intro-side-glow-blur, 1.6px)) brightness(1.2);
   }
 }

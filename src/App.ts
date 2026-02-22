@@ -506,8 +506,8 @@ export class App extends LitElement {
                         : null}
                 </div>
                 <div id="intro-flash" class="absolute inset-0 z-10 hidden opacity-0 pointer-events-none bg-zinc-100" aria-hidden="true"></div>
-                <div id="intro-side-glow-left" class="intro-side-glow absolute top-1/2 left-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
-                <div id="intro-side-glow-right" class="intro-side-glow absolute top-1/2 right-[clamp(8px,1.5vw,28px)] z-3 -translate-y-1/2 rounded-full opacity-0 pointer-events-none" style="${sideGlowStyle}" aria-hidden="true"></div>
+                <div id="intro-side-glow-left" class="intro-side-glow absolute top-1/2 left-0 z-3 -translate-y-1/2 opacity-0 pointer-events-none mix-blend-screen" style="${sideGlowStyle}" aria-hidden="true"></div>
+                <div id="intro-side-glow-right" class="intro-side-glow absolute top-1/2 right-0 z-3 -translate-y-1/2 opacity-0 pointer-events-none mix-blend-screen" style="${sideGlowStyle}" aria-hidden="true"></div>
                 <div id="intro-ring" class="relative z-2 grid aspect-square place-items-center" aria-label="intro-circle">
                     <div id="intro-ring-particles" class="absolute inset-0 z-1 pointer-events-none" aria-hidden="true">
                         ${pulseParticleNodes}
