@@ -73,8 +73,8 @@ const INTRO_CONFIG = {
     },
     typing: {
         message: 'Hello, Nemo',
-        startDelayAfterCubeMs: 240,
-        charDelayMs: 66,
+        startDelayAfterCubeMs: 300,
+        charDelayMs: 250,
     },
     sideGlow: {
         blurPx: 1.6,
