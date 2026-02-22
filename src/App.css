@@ -114,7 +114,7 @@ root-app {
   transform: translate(-50%, -50%) scale(var(--intro-cube-scale));
 }
 
-#intro-cube ascii-cube {
+#intro-cube three-cube {
   width: 90%;
   height: 90%;
   display: block;
