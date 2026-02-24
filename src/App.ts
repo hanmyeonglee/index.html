@@ -3,7 +3,7 @@ import { customElement, query, state } from 'lit/decorators.js'
 import gsap from 'gsap'
 
 import "./App.css";
-import './three-cube.ts'
+import './three-tesseract.ts'
 import './intro-background-effects.ts'
 
 type IntroPhase = 'draw' | 'pulse' | 'stable' | 'typing';
@@ -78,7 +78,7 @@ const INTRO_CONFIG = {
     },
     sideGlow: {
         blurPx: 1.6,
-        tone: 'cyan',
+        tone: '#39AAAA',
     },
 };
 
@@ -604,7 +604,7 @@ export class App extends LitElement {
                         </g>
                     </svg>
                     <div id="intro-cube" class="absolute left-1/2 top-1/2 z-4 grid place-items-center opacity-0 pointer-events-none" aria-hidden="true">
-                        <three-cube></three-cube>
+                        <three-tesseract></three-tesseract>
                     </div>
                     <div id="intro-typing" class="${this.phase === 'typing' ? 'is-visible' : ''} absolute left-1/2 z-5 w-max -translate-x-1/2 opacity-0 pointer-events-none transition-opacity duration-300 ease-out" aria-live="polite">
                         <div id="intro-typing-measure" class="invisible whitespace-pre font-mono text-2xl tracking-[0.02em]">$ ${INTRO_CONFIG.typing.message}_</div>

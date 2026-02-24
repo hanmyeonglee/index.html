@@ -34,7 +34,7 @@ export class IntroBackgroundEffects extends LitElement {
 
     render() {
         return html`
-            <intro-matrix-rain></intro-matrix-rain>
+            <!-- <intro-matrix-rain></intro-matrix-rain> -->
             ${null}
         `;
     }
